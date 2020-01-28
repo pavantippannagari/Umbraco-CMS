@@ -1,9 +1,11 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using NPoco;
 using Umbraco.Core.Persistence;
 using Umbraco.Core.Persistence.Dtos;
+using Z.Dapper.Plus;
 
 namespace Umbraco.Core.Migrations.Upgrade.V_8_0_0
 {
@@ -98,22 +100,59 @@ namespace Umbraco.Core.Migrations.Upgrade.V_8_0_0
                 .Select<PropertyDataDto>(x => x.Id, x => x.VarcharValue)
                 .From<PropertyDataDto>()
                 .WhereIn<PropertyDataDto>(x => x.PropertyTypeId, intPropertyTypes));
+            DapperPlusManager.Entity<PropertyDataIntText>().Table("umbracoPropertyData").Identity(x => x.Id);
+            var propertyDataIntTexts = new List<PropertyDataIntText>();
             foreach (var value in values)
-                Database.Execute(Sql()
-                    .Update<PropertyDataDto>(u => u
-                        .Set(x => x.IntegerValue, string.IsNullOrWhiteSpace(value.VarcharValue) ? (int?) null :  int.Parse(value.VarcharValue, NumberStyles.Any, CultureInfo.InvariantCulture))
-                        .Set(x => x.TextValue, null))
-                    .Where<PropertyDataDto>(x => x.Id == value.Id));
+            {
+                propertyDataIntTexts.Add(new PropertyDataIntText
+                {
+                    Id = value.Id,
+                    IntValue = string.IsNullOrWhiteSpace(value.VarcharValue) ? (int?)null : int.Parse(value.VarcharValue, NumberStyles.Any, CultureInfo.InvariantCulture),
+                    TextValue = null
+                });
+//                Database.Execute(Sql()
+//                    .Update<PropertyDataDto>(u => u
+//                        .Set(x => x.IntegerValue, string.IsNullOrWhiteSpace(value.VarcharValue) ? (int?)null : int.Parse(value.VarcharValue, NumberStyles.Any, CultureInfo.InvariantCulture))
+//                        .Set(x => x.TextValue, null))
+//                    .Where<PropertyDataDto>(x => x.Id == value.Id));
+            }
+            Database.Transaction.BulkUpdate(propertyDataIntTexts);
 
+
+            DapperPlusManager.Entity<PropertyDataDateText>().Table("umbracoPropertyData").Identity(x => x.Id);
             values = Database.Fetch<PropertyDataValue>(Sql().Select<PropertyDataDto>(x => x.Id, x => x.VarcharValue).From<PropertyDataDto>().WhereIn<PropertyDataDto>(x => x.PropertyTypeId, dtPropertyTypes));
+            var propertyDataDateTexts = new List<PropertyDataDateText>();
             foreach (var value in values)
-                Database.Execute(Sql()
-                    .Update<PropertyDataDto>(u => u
-                        .Set(x => x.DateValue, string.IsNullOrWhiteSpace(value.VarcharValue) ? (DateTime?) null : DateTime.Parse(value.VarcharValue, CultureInfo.InvariantCulture, DateTimeStyles.None))
-                        .Set(x => x.TextValue, null))
-                    .Where<PropertyDataDto>(x => x.Id == value.Id));
+            {
+                propertyDataDateTexts.Add(new PropertyDataDateText
+                {
+                    Id = value.Id,
+                    DateValue = string.IsNullOrWhiteSpace(value.VarcharValue) ? (DateTime?)null : DateTime.Parse(value.VarcharValue, CultureInfo.InvariantCulture, DateTimeStyles.None),
+                    TextValue = null
+                });
+//                Database.Execute(Sql()
+//                    .Update<PropertyDataDto>(u => u
+//                        .Set(x => x.DateValue, string.IsNullOrWhiteSpace(value.VarcharValue) ? (DateTime?)null : DateTime.Parse(value.VarcharValue, CultureInfo.InvariantCulture, DateTimeStyles.None))
+//                        .Set(x => x.TextValue, null))
+//                    .Where<PropertyDataDto>(x => x.Id == value.Id));
+            }
+            Database.Transaction.BulkUpdate(propertyDataDateTexts);
 
             // anything that's custom... ppl will have to figure it out manually, there isn't much we can do about it
+        }
+
+        private class PropertyDataDateText
+        {
+            public int Id { get; set; }
+            public DateTime? DateValue { get; set; }
+            public string TextValue { get; set; }
+        }
+
+        private class PropertyDataIntText
+        {
+            public int Id { get; set; }
+            public int? IntValue { get; set; }
+            public string TextValue { get; set; }
         }
 
         // ReSharper disable once ClassNeverInstantiated.Local
@@ -126,3 +165,4 @@ namespace Umbraco.Core.Migrations.Upgrade.V_8_0_0
         // ReSharper restore UnusedAutoPropertyAccessor.Local
     }
 }
+

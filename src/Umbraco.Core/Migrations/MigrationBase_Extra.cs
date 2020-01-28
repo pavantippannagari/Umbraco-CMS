@@ -82,7 +82,7 @@ namespace Umbraco.Core.Migrations
                 Execute.Sql(sql).Do();
         }
 
-        protected void ReplaceColumn<T>(string tableName, string currentName, string newName)
+        protected virtual void ReplaceColumn<T>(string tableName, string currentName, string newName)
         {
             AddColumn<T>(tableName, newName, out var sqls);
             Execute.Sql($"UPDATE {SqlSyntax.GetQuotedTableName(tableName)} SET {SqlSyntax.GetQuotedColumnName(newName)}={SqlSyntax.GetQuotedColumnName(currentName)}").Do();
