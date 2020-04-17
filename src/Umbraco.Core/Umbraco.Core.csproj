@@ -119,7 +119,7 @@
     </PackageReference>
     <PackageReference Include="Umbraco.SqlServerCE" Version="4.0.0.1" />
     <PackageReference Include="Z.Dapper.Plus">
-      <Version>3.0.1</Version>
+      <Version>3.0.9</Version>
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
