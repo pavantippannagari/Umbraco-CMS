@@ -1,6 +1,58 @@
 ﻿(function () {
     'use strict';
 
+    /**
+     * When performing a copy, we do copy the ElementType Data Model, but each inner Nested Content property is still stored as the Nested Content Model, aka. each property is just storing its value. To handle this we need to ensure we handle both scenarios.
+     */
+
+
+    angular.module('umbraco').run(['clipboardService', function (clipboardService) {
+
+        function clearNestedContentPropertiesForStorage(prop, propClearingMethod) {
+
+            // if prop.editor is "Umbraco.NestedContent"
+            if ((typeof prop === 'object' && prop.editor === "Umbraco.NestedContent")) {
+
+                var value = prop.value;
+                for (var i = 0; i < value.length; i++) {
+                    var obj = value[i];
+
+                    // remove the key
+                    delete obj.key;
+
+                    // Loop through all inner properties:
+                    for (var k in obj) {
+                        propClearingMethod(obj[k]);
+                    }
+                }
+            }
+        }
+        
+        clipboardService.registrerClearPropertyResolver(clearNestedContentPropertiesForStorage)
+
+
+        function clearInnerNestedContentPropertiesForStorage(prop, propClearingMethod) {
+
+            // if we got an array, and it has a entry with ncContentTypeAlias this meants that we are dealing with a NestedContent property inside a NestedContent property.
+            if ((Array.isArray(prop) && prop.length > 0 && prop[0].ncContentTypeAlias !== undefined)) {
+
+                for (var i = 0; i < prop.length; i++) {
+                    var obj = prop[i];
+
+                    // remove the key
+                    delete obj.key;
+
+                    // Loop through all inner properties:
+                    for (var k in obj) {
+                        propClearingMethod(obj[k]);
+                    }
+                }
+            }
+        }
+        
+        clipboardService.registrerClearPropertyResolver(clearInnerNestedContentPropertiesForStorage)
+    }]);
+
     angular
         .module('umbraco')
         .component('nestedContentPropertyEditor', {
@@ -13,7 +65,7 @@
             }
         });
 
-    function NestedContentController($scope, $interpolate, $filter, $timeout, contentResource, localizationService, iconHelper, clipboardService, eventsService, overlayService, $routeParams, editorState) {
+    function NestedContentController($scope, $interpolate, $filter, $timeout, contentResource, localizationService, iconHelper, clipboardService, eventsService, overlayService) {
         
         var vm = this;
         var model = $scope.$parent.$parent.model;
@@ -41,15 +93,17 @@
         if (vm.maxItems === 0)
             vm.maxItems = 1000;
 
-        vm.singleMode = vm.minItems === 1 && vm.maxItems === 1;
+        vm.singleMode = vm.minItems === 1 && vm.maxItems === 1 && model.config.contentTypes.length === 1;;
         vm.showIcons = Object.toBoolean(model.config.showIcons);
         vm.wideMode = Object.toBoolean(model.config.hideLabel);
         vm.hasContentTypes = model.config.contentTypes.length > 0;
 
         var labels = {};
-        localizationService.localizeMany(["grid_addElement", "content_createEmpty"]).then(function (data) {
+        vm.labels = labels;
+        localizationService.localizeMany(["grid_addElement", "content_createEmpty", "actions_copy"]).then(function (data) {
             labels.grid_addElement = data[0];
             labels.content_createEmpty = data[1];
+            labels.copy_icon_title = data[2]
         });
 
         function setCurrentNode(node) {
@@ -74,7 +128,7 @@
             }
 
             localizationService.localize("clipboard_labelForArrayOfItemsFrom", [model.label, nodeName]).then(function(data) {
-                clipboardService.copyArray("elementTypeArray", aliases, vm.nodes, data, "icon-thumbnail-list", model.id);
+                clipboardService.copyArray("elementTypeArray", aliases, vm.nodes, data, "icon-thumbnail-list", model.id, clearNodeForCopy);
             });
         }
 
@@ -83,6 +137,33 @@
             labelTokens: [model.label],
             icon: 'documents',
             method: copyAllEntries,
+            isDisabled: true
+        }
+
+
+        var removeAllEntries = function () {
+            localizationService.localizeMany(["content_nestedContentDeleteAllItems", "general_delete"]).then(function (data) {
+                overlayService.confirmDelete({
+                    title: data[1],
+                    content: data[0],
+                    close: function () {
+                        overlayService.close();
+                    },
+                    submit: function () {
+                        vm.nodes = [];
+                        setDirty();
+                        updateModel();
+                        overlayService.close();
+                    }
+                });
+            });
+        }
+
+        var removeAllEntriesAction = {
+            labelKey: 'clipboard_labelForRemoveAllEntries',
+            labelTokens: [],
+            icon: 'trash',
+            method: removeAllEntries,
             isDisabled: true
         }
 
@@ -102,10 +183,11 @@
 
             setCurrentNode(newNode);
             setDirty();
+            validate();
         };
 
         vm.openNodeTypePicker = function ($event) {
-            if (vm.nodes.length >= vm.maxItems) {
+            if (vm.overlayMenu || vm.nodes.length >= vm.maxItems) {
                 return;
             }
 
@@ -178,7 +260,8 @@
                 });
             });
 
-            vm.overlayMenu.title = vm.overlayMenu.pasteItems.length > 0 ? labels.grid_addElement : labels.content_createEmpty;
+            vm.overlayMenu.title = labels.grid_addElement;
+            vm.overlayMenu.hideHeader = vm.overlayMenu.pasteItems.length > 0;
 
             vm.overlayMenu.clickClearPaste = function ($event) {
                 $event.stopPropagation();
@@ -186,11 +269,13 @@
                 clipboardService.clearEntriesOfType("elementType", contentTypeAliases);
                 clipboardService.clearEntriesOfType("elementTypeArray", contentTypeAliases);
                 vm.overlayMenu.pasteItems = [];// This dialog is not connected via the clipboardService events, so we need to update manually.
+                vm.overlayMenu.hideHeader = false;
             };
 
             if (vm.overlayMenu.availableItems.length === 1 && vm.overlayMenu.pasteItems.length === 0) {
                 // only one scaffold type - no need to display the picker
                 addNode(vm.scaffolds[0].contentTypeAlias);
+                vm.overlayMenu = null;
                 return;
             }
 
@@ -205,12 +290,22 @@
             }
         };
 
+        vm.canDeleteNode = function (idx) {
+            return (vm.nodes.length > vm.minItems)
+                ? true
+                : model.config.contentTypes.length > 1;
+        }
+
         function deleteNode(idx) {
             vm.nodes.splice(idx, 1);
             setDirty();
             updateModel();
+            validate();
         };
         vm.requestDeleteNode = function (idx) {
+            if (!vm.canDeleteNode(idx)) {
+                return;
+            }
             if (model.config.confirmDeletes === true) {
                 localizationService.localizeMany(["content_nestedContentDeleteItem", "general_delete", "general_cancel", "contentTypeEditor_yesDelete"]).then(function (data) {
                     const overlay = {
@@ -236,6 +331,9 @@
         };
 
         vm.getName = function (idx) {
+            if (!model.value || !model.value.length) {
+                return "";
+            }
 
             var name = "";
 
@@ -285,6 +383,10 @@
         };
 
         vm.getIcon = function (idx) {
+            if (!model.value || !model.value.length) {
+                return "";
+            }
+
             var scaffold = getScaffold(model.value[idx].ncContentTypeAlias);
             return scaffold && scaffold.icon ? iconHelper.convertFromLegacyIcon(scaffold.icon) : "icon-folder";
         }
@@ -335,6 +437,11 @@
             });
         }
 
+        function clearNodeForCopy(clonedData) {
+            delete clonedData.key;
+            delete clonedData.$$hashKey;
+        }
+
         vm.showCopy = clipboardService.isSupported();
         vm.showPaste = false;
 
@@ -342,7 +449,7 @@
 
             syncCurrentNode();
 
-            clipboardService.copy("elementType", node.contentTypeAlias, node);
+            clipboardService.copy("elementType", node.contentTypeAlias, node, null, null, null, clearNodeForCopy);
             $event.stopPropagation();
         }
         
@@ -439,11 +546,13 @@
                     }
                 }
 
-                // Auto-fill with elementTypes, but only if we have one type to choose from, and if this property is empty.
-                if (vm.singleMode === true && vm.nodes.length === 0 && model.config.minItems > 0) {
+                // Enforce min items if we only have one scaffold type
+                var modelWasChanged = false;
+                if (vm.nodes.length < vm.minItems && vm.scaffolds.length === 1) {
                     for (var i = vm.nodes.length; i < model.config.minItems; i++) {
                         addNode(vm.scaffolds[0].contentTypeAlias);
                     }
+                    modelWasChanged = true;
                 }
 
                 // If there is only one item, set it as current node
@@ -451,8 +560,13 @@
                     setCurrentNode(vm.nodes[0]);
                 }
 
+                validate();
+
                 vm.inited = true;
 
+                if (modelWasChanged) {
+                    updateModel();
+                }
                 updatePropertyActionStates();
                 checkAbilityToPasteContent();
             }
@@ -476,6 +590,7 @@
                     // Force validation to occur server side as this is the
                     // only way we can have consistency between mandatory and
                     // regex validation messages. Not ideal, but it works.
+                    prop.ncMandatory = prop.validation.mandatory;
                     prop.validation = {
                         mandatory: false,
                         pattern: ""
@@ -534,13 +649,15 @@
         }
 
         function updatePropertyActionStates() {
-            copyAllEntriesAction.isDisabled = !model.value || model.value.length === 0;
+            copyAllEntriesAction.isDisabled = !model.value || !model.value.length;
+            removeAllEntriesAction.isDisabled = copyAllEntriesAction.isDisabled;
         }
 
 
         
         var propertyActions = [
-            copyAllEntriesAction
+            copyAllEntriesAction,
+            removeAllEntriesAction
         ];
         
         this.$onInit = function () {
@@ -553,25 +670,28 @@
             updateModel();
         });
 
+        var validate = function () {
+            if (vm.nodes.length < vm.minItems) {
+                $scope.nestedContentForm.minCount.$setValidity("minCount", false);
+            }
+            else {
+                $scope.nestedContentForm.minCount.$setValidity("minCount", true);
+            }
+
+            if (vm.nodes.length > vm.maxItems) {
+                $scope.nestedContentForm.maxCount.$setValidity("maxCount", false);
+            }
+            else {
+                $scope.nestedContentForm.maxCount.$setValidity("maxCount", true);
+            }
+        }
+
         var watcher = $scope.$watch(
             function () {
                 return vm.nodes.length;
             },
             function () {
-                //Validate!
-                if (vm.nodes.length < vm.minItems) {
-                    $scope.nestedContentForm.minCount.$setValidity("minCount", false);
-                }
-                else {
-                    $scope.nestedContentForm.minCount.$setValidity("minCount", true);
-                }
-
-                if (vm.nodes.length > vm.maxItems) {
-                    $scope.nestedContentForm.maxCount.$setValidity("maxCount", false);
-                }
-                else {
-                    $scope.nestedContentForm.maxCount.$setValidity("maxCount", true);
-                }
+                validate();
             }
         );
 
