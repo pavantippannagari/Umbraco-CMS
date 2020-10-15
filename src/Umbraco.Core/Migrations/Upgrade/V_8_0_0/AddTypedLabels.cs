@@ -108,7 +108,7 @@ namespace Umbraco.Core.Migrations.Upgrade.V_8_0_0
                     Id = value.Id,
                     IntValue = string.IsNullOrWhiteSpace(value.VarcharValue) ? (int?)null : int.Parse(value.VarcharValue, NumberStyles.Any, CultureInfo.InvariantCulture),
                     TextValue = null,
-VarcharValue = null
+                    VarcharValue = null
                 });
 //                Database.Execute(Sql()
 //                    .Update<PropertyDataDto>(u => u
@@ -129,7 +129,7 @@ VarcharValue = null
                     Id = value.Id,
                     DateValue = string.IsNullOrWhiteSpace(value.VarcharValue) ? (DateTime?)null : DateTime.Parse(value.VarcharValue, CultureInfo.InvariantCulture, DateTimeStyles.None),
                     TextValue = null,
-VarcharValue = null
+                    VarcharValue = null
                 });
 //                Database.Execute(Sql()
 //                    .Update<PropertyDataDto>(u => u
@@ -147,6 +147,7 @@ VarcharValue = null
             public int Id { get; set; }
             public DateTime? DateValue { get; set; }
             public string TextValue { get; set; }
+            public string VarcharValue { get; set; }
         }
 
         private class PropertyDataIntText
@@ -154,6 +155,7 @@ VarcharValue = null
             public int Id { get; set; }
             public int? IntValue { get; set; }
             public string TextValue { get; set; }
+            public string VarcharValue { get; set; }
         }
 
         // ReSharper disable once ClassNeverInstantiated.Local
