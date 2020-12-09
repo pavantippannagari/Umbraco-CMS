@@ -6,6 +6,7 @@ using Umbraco.Core.IO;
 using Umbraco.Core.Persistence;
 using Umbraco.Core.Persistence.UnitOfWork;
 using Umbraco.Core.Events;
+using Umbraco.Core.Scoping;
 
 namespace Umbraco.Core.Services
 {
@@ -45,6 +46,7 @@ namespace Umbraco.Core.Services
         private Lazy<IContentService> _contentService;
         private Lazy<IUserService> _userService;
         private Lazy<IMemberService> _memberService;
+        private Lazy<IMemberService> _customMemberService;
         private Lazy<IMediaService> _mediaService;
         private Lazy<IContentTypeService> _contentTypeService;
         private Lazy<IDataTypeService> _dataTypeService;
@@ -170,6 +172,10 @@ namespace Umbraco.Core.Services
         {
             EventMessagesFactory = eventMessagesFactory;
 
+
+            ScopeProvider writeScopeProvider = new ScopeProvider(new DefaultDatabaseFactory(Constants.System.UmbracoCustomWriteConnectionName, logger));
+            PetaPocoUnitOfWorkProvider writeUnitOfWorkProvider = new PetaPocoUnitOfWorkProvider(writeScopeProvider);
+
             if (_migrationEntryService == null)
                 _migrationEntryService = new Lazy<IMigrationEntryService>(() => new MigrationEntryService(provider, repositoryFactory, logger, eventMessagesFactory));
 
@@ -186,7 +192,8 @@ namespace Umbraco.Core.Services
                 _domainService = new Lazy<IDomainService>(() => new DomainService(provider, repositoryFactory, logger, eventMessagesFactory));
 
             if (_auditService == null)
-                _auditService = new Lazy<IAuditService>(() => new AuditService(provider, repositoryFactory, logger, eventMessagesFactory));
+                _auditService = new Lazy<IAuditService>(() => new AuditService(writeUnitOfWorkProvider, repositoryFactory, logger, eventMessagesFactory));
+                // _auditService = new Lazy<IAuditService>(() => new AuditService(provider, repositoryFactory, logger, eventMessagesFactory));
 
             if (_localizedTextService == null)
             {
@@ -235,7 +242,15 @@ namespace Umbraco.Core.Services
                 _userService = new Lazy<IUserService>(() => new UserService(provider, repositoryFactory, logger, eventMessagesFactory));
 
             if (_memberService == null)
-                _memberService = new Lazy<IMemberService>(() => new MemberService(provider, repositoryFactory, logger, eventMessagesFactory, _memberGroupService.Value, _dataTypeService.Value));
+            {
+                _memberService = new Lazy<IMemberService>(() => new MemberService(writeUnitOfWorkProvider, repositoryFactory, logger, eventMessagesFactory, _memberGroupService.Value, _dataTypeService.Value));
+                // _memberService = new Lazy<IMemberService>(() => new MemberService(provider, repositoryFactory, logger, eventMessagesFactory, _memberGroupService.Value, _dataTypeService.Value));
+            }
+
+            if (_customMemberService == null)
+            {
+                _customMemberService = new Lazy<IMemberService>(() => new MemberService(provider, repositoryFactory, logger, eventMessagesFactory, _memberGroupService.Value, _dataTypeService.Value));
+            }
 
             if (_contentService == null)
                 _contentService = new Lazy<IContentService>(() => new ContentService(provider, repositoryFactory, logger, eventMessagesFactory, _dataTypeService.Value, _userService.Value));
@@ -258,14 +273,14 @@ namespace Umbraco.Core.Services
             if (_entityService == null)
                 _entityService = new Lazy<IEntityService>(() => new EntityService(
                     provider, repositoryFactory, logger, eventMessagesFactory,
-                    _contentService.Value, _contentTypeService.Value, _mediaService.Value, _dataTypeService.Value, _memberService.Value, _memberTypeService.Value,
+                    _contentService.Value, _contentTypeService.Value, _mediaService.Value, _dataTypeService.Value, _customMemberService.Value, _memberTypeService.Value,
                     idkMap));
 
             if (_packagingService == null)
                 _packagingService = new Lazy<IPackagingService>(() => new PackagingService(logger, _contentService.Value, _contentTypeService.Value, _mediaService.Value, _macroService.Value, _dataTypeService.Value, _fileService.Value, _localizationService.Value, _entityService.Value, _userService.Value, repositoryFactory, provider));
 
             if (_relationService == null)
-                _relationService = new Lazy<IRelationService>(() => new RelationService(provider, repositoryFactory, logger, eventMessagesFactory, _entityService.Value));
+                _relationService = new Lazy<IRelationService>(() => new RelationService(writeUnitOfWorkProvider, repositoryFactory, logger, eventMessagesFactory, _entityService.Value));
 
             if (_treeService == null)
                 _treeService = new Lazy<IApplicationTreeService>(() => new ApplicationTreeService(logger, cache));
@@ -460,6 +475,14 @@ namespace Umbraco.Core.Services
         public IMemberService MemberService
         {
             get { return _memberService.Value; }
+        }
+
+        /// <summary>
+        /// Gets the <see cref="MemberService"/>
+        /// </summary>
+        public IMemberService CustomMemberService
+        {
+            get { return _customMemberService.Value; }
         }
 
         /// <summary>

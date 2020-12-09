@@ -9,6 +9,7 @@ using Umbraco.Core.Models.Rdbms;
 using Umbraco.Core.Sync;
 using Umbraco.Web.Routing;
 using Umbraco.Core.Logging;
+using Umbraco.Core.Persistence;
 using Umbraco.Core.Scoping;
 using Umbraco.Web.Scheduling;
 
@@ -22,13 +23,17 @@ namespace Umbraco.Web
     /// </remarks>
     public class BatchedDatabaseServerMessenger : DatabaseServerMessenger
     {
-        private readonly ApplicationContext _appContext;
+        // private readonly ApplicationContext _appContext;
+        private readonly ScopeProvider _writeScopeProvider;
 
         public BatchedDatabaseServerMessenger(ApplicationContext appContext, bool enableDistCalls, DatabaseServerMessengerOptions options)
             : base(appContext, enableDistCalls, options)
         {
-            _appContext = appContext;
+            // _appContext = appContext;
             Scheduler.Initializing += Scheduler_Initializing;
+            _writeScopeProvider = new ScopeProvider(new DefaultDatabaseFactory(
+                Constants.System.UmbracoCustomWriteConnectionName,
+                appContext.ProfilingLogger.Logger));
         }
 
         /// <summary>
@@ -46,7 +51,7 @@ namespace Umbraco.Web
                 //start the background task runner for processing instructions
                 const int delayMilliseconds = 60000;
                 var instructionProcessingRunner = new BackgroundTaskRunner<IBackgroundTask>("InstructionProcessing", ApplicationContext.ProfilingLogger.Logger);
-                var instructionProcessingTask = new InstructionProcessing(instructionProcessingRunner, this, _appContext.ScopeProvider, ApplicationContext.ProfilingLogger.Logger, delayMilliseconds, Options.ThrottleSeconds * 1000);
+                var instructionProcessingTask = new InstructionProcessing(instructionProcessingRunner, this, _writeScopeProvider, ApplicationContext.ProfilingLogger.Logger, delayMilliseconds, Options.ThrottleSeconds * 1000);
                 instructionProcessingRunner.TryAdd(instructionProcessingTask);
                 e.Add(instructionProcessingTask);
             }
@@ -154,7 +159,7 @@ namespace Umbraco.Web
             batch.Clear();
 
             //Write the instructions but only create JSON blobs with a max instruction count equal to MaxProcessingInstructionCount
-            using (var scope = _appContext.ScopeProvider.CreateScope())
+            using (var scope = _writeScopeProvider.CreateScope())
             {
                 foreach (var instructionsBatch in instructions.InGroupsOf(Options.MaxProcessingInstructionCount))
                 {
@@ -214,7 +219,7 @@ namespace Umbraco.Web
             if (batch == null)
             {
                 //only write the json blob with a maximum count of the MaxProcessingInstructionCount
-                using (var scope = _appContext.ScopeProvider.CreateScope())
+                using (var scope = _writeScopeProvider.CreateScope())
                 {
                     foreach (var maxBatch in instructions.InGroupsOf(Options.MaxProcessingInstructionCount))
                     {

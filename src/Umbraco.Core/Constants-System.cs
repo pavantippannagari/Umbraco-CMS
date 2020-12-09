@@ -64,6 +64,7 @@
             public const int DefaultLabelDataTypeId = -92;
 
             public const string UmbracoConnectionName = "umbracoDbDSN";
+            public const string UmbracoCustomWriteConnectionName = "umbracoCustomWrite";
             public const string UmbracoMigrationName = "Umbraco";
         }
 
