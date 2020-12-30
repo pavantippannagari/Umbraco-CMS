@@ -7,6 +7,7 @@ using Umbraco.Core.PropertyEditors;
 using Umbraco.Core.Logging;
 using Umbraco.Core.Migrations.PostMigrations;
 using Umbraco.Core.Models;
+using Z.Dapper.Plus;
 
 namespace Umbraco.Core.Migrations.Upgrade.V_8_0_0
 {
@@ -66,8 +67,13 @@ namespace Umbraco.Core.Migrations.Upgrade.V_8_0_0
                     var updatedDtos = propertyDataDtos.Where(x => UpdatePropertyDataDto(x, config, true));
 
                     // persist changes
-                    foreach (var propertyDataDto in updatedDtos)
-                        Database.Update(propertyDataDto);
+                    //                    foreach (var propertyDataDto in updatedDtos)
+                    //                        Database.Update(propertyDataDto);
+                    DapperPlusManager.Entity<PropertyDataUpdate>().Table("umbracoPropertyData").Identity(x => x.Id);
+                    Database.Transaction.BulkUpdate(updatedDtos.Select(x => new PropertyDataUpdate
+                    {
+                        Id = x.Id, TextValue = x.TextValue, IntValue = x.IntegerValue, VarcharValue = x.VarcharValue
+                    }).ToList());
                 }
                 else
                 {
@@ -110,6 +116,14 @@ namespace Umbraco.Core.Migrations.Upgrade.V_8_0_0
             dataType.Configuration = ConfigurationEditor.ToDatabase(flexConfig);
 
             Database.Update(dataType);
+        }
+
+        private class PropertyDataUpdate
+        {
+            public int Id { get; set; }
+            public string VarcharValue { get; set; }
+            public string TextValue { get; set; }
+            public int? IntValue { get; set; }
         }
     }
 }
