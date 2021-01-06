@@ -17,7 +17,7 @@ namespace Umbraco.Core.Services.Implement
         private readonly IRelationTypeRepository _relationTypeRepository;
         private readonly IAuditRepository _auditRepository;
 
-        public RelationService(IScopeProvider uowProvider, ILogger logger, IEventMessagesFactory eventMessagesFactory, IEntityService entityService,
+        public RelationService(ICustomScopeProvider uowProvider, ILogger logger, IEventMessagesFactory eventMessagesFactory, IEntityService entityService,
             IRelationRepository relationRepository, IRelationTypeRepository relationTypeRepository, IAuditRepository auditRepository)
             : base(uowProvider, logger, eventMessagesFactory)
         {

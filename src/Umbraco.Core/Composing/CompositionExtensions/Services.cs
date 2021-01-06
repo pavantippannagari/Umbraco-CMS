@@ -6,6 +6,8 @@ using Umbraco.Core.Events;
 using Umbraco.Core.IO;
 using Umbraco.Core.Logging;
 using Umbraco.Core.Packaging;
+using Umbraco.Core.Persistence.Repositories;
+using Umbraco.Core.Scoping;
 using Umbraco.Core.Services;
 using Umbraco.Core.Services.Implement;
 
@@ -33,7 +35,8 @@ namespace Umbraco.Core.Composing.CompositionExtensions
             composition.RegisterUnique<ITagService, TagService>();
             composition.RegisterUnique<IContentService, ContentService>();
             composition.RegisterUnique<IUserService, UserService>();
-            composition.RegisterUnique<IMemberService, MemberService>();
+            composition.RegisterUnique<IMemberService>(f => new MemberService(f.GetInstance<ICustomScopeProvider>(), f.GetInstance<ILogger>(), f.GetInstance<IEventMessagesFactory>(), f.GetInstance<IMemberGroupService>(), f.GetInstance<IMediaFileSystem>(), f.GetInstance<IMemberRepository>(), f.GetInstance<IMemberTypeRepository>(), f.GetInstance<IMemberGroupRepository>(), f.GetInstance<IAuditRepository>()));
+            composition.RegisterUnique<ICustomMemberService>(f => new CustomMemberService(f.GetInstance<ICustomScopeProvider>(), f.GetInstance<ILogger>(), f.GetInstance<IEventMessagesFactory>(), f.GetInstance<IMemberGroupService>(), f.GetInstance<IMediaFileSystem>(), f.GetInstance<IMemberRepository>(), f.GetInstance<IMemberTypeRepository>(), f.GetInstance<IMemberGroupRepository>(), f.GetInstance<IAuditRepository>()));
             composition.RegisterUnique<IMediaService, MediaService>();
             composition.RegisterUnique<IContentTypeService, ContentTypeService>();
             composition.RegisterUnique<IContentTypeBaseServiceProvider, ContentTypeBaseServiceProvider>();

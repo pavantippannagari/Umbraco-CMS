@@ -138,13 +138,13 @@ namespace Umbraco.Core.Persistence.SqlSyntax
         public virtual string GetStringColumnEqualComparison(string column, int paramIndex, TextColumnType columnType)
         {
             //use the 'upper' method to always ensure strings are matched without case sensitivity no matter what the db setting.
-            return $"upper({column}) = upper(@{paramIndex})";
+            return $"{column} = @{paramIndex}";
         }
 
         public virtual string GetStringColumnWildcardComparison(string column, int paramIndex, TextColumnType columnType)
         {
             //use the 'upper' method to always ensure strings are matched without case sensitivity no matter what the db setting.
-            return $"upper({column}) LIKE upper(@{paramIndex})";
+            return $"{column} LIKE @{paramIndex}";
         }
 
         public virtual string GetConcat(params string[] args)
