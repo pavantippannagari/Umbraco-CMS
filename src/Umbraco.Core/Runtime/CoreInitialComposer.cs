@@ -21,6 +21,7 @@ using Umbraco.Core.Services;
 using Umbraco.Core.Services.Implement;
 using Umbraco.Core.Strings;
 using Umbraco.Core.Sync;
+using FileSystems = Umbraco.Core.IO.FileSystems;
 using IntegerValidator = Umbraco.Core.PropertyEditors.Validators.IntegerValidator;
 
 namespace Umbraco.Core.Runtime
@@ -50,6 +51,11 @@ namespace Umbraco.Core.Runtime
             composition.RegisterUnique<ScopeProvider>(); // implements both IScopeProvider and IScopeAccessor
             composition.RegisterUnique<IScopeProvider>(f => f.GetInstance<ScopeProvider>());
             composition.RegisterUnique<IScopeAccessor>(f => f.GetInstance<ScopeProvider>());
+            composition.RegisterUnique<ICustomScopeProvider>(f =>
+                new CustomScopeProvider(
+                    new UmbracoDatabaseFactory(f.GetInstance<ILogger>(),
+                        new Lazy<IMapperCollection>(() => f.GetInstance<IMapperCollection>())),
+                    f.GetInstance<FileSystems>(), f.GetInstance<ILogger>()));
 
             // register database builder
             // *not* a singleton, don't want to keep it around

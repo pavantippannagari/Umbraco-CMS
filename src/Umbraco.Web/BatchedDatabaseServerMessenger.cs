@@ -26,19 +26,21 @@ namespace Umbraco.Web
     public class BatchedDatabaseServerMessenger : DatabaseServerMessenger
     {
         private readonly IUmbracoDatabaseFactory _databaseFactory;
+        private readonly ICustomScopeProvider _customScopeProvider;
 
         [Obsolete("This overload should not be used, enableDistCalls has no effect")]
         [EditorBrowsable(EditorBrowsableState.Never)]
         public BatchedDatabaseServerMessenger(
-            IRuntimeState runtime, IUmbracoDatabaseFactory databaseFactory, IScopeProvider scopeProvider, ISqlContext sqlContext, IProfilingLogger proflog, IGlobalSettings globalSettings, bool enableDistCalls, DatabaseServerMessengerOptions options)
-            : this(runtime, databaseFactory, scopeProvider, sqlContext, proflog, globalSettings, options)
+            IRuntimeState runtime, IUmbracoDatabaseFactory databaseFactory, IScopeProvider scopeProvider, ISqlContext sqlContext, IProfilingLogger proflog, IGlobalSettings globalSettings, bool enableDistCalls, DatabaseServerMessengerOptions options, ICustomScopeProvider customScopeProvider)
+            : this(runtime, databaseFactory, scopeProvider, sqlContext, proflog, globalSettings, options, customScopeProvider)
         { }
 
         public BatchedDatabaseServerMessenger(
-            IRuntimeState runtime, IUmbracoDatabaseFactory databaseFactory, IScopeProvider scopeProvider, ISqlContext sqlContext, IProfilingLogger proflog, IGlobalSettings globalSettings, DatabaseServerMessengerOptions options)
+            IRuntimeState runtime, IUmbracoDatabaseFactory databaseFactory, IScopeProvider scopeProvider, ISqlContext sqlContext, IProfilingLogger proflog, IGlobalSettings globalSettings, DatabaseServerMessengerOptions options, ICustomScopeProvider customScopeProvider)
             : base(runtime, scopeProvider, sqlContext, proflog, globalSettings, true, options)
         {
             _databaseFactory = databaseFactory;
+            _customScopeProvider = customScopeProvider;
         }
 
         // invoked by DatabaseServerRegistrarAndMessengerComponent
@@ -82,7 +84,7 @@ namespace Umbraco.Web
             batch.Clear();
 
             //Write the instructions but only create JSON blobs with a max instruction count equal to MaxProcessingInstructionCount
-            using (var scope = ScopeProvider.CreateScope())
+            using (var scope = _customScopeProvider.CreateScope())
             {
                 foreach (var instructionsBatch in instructions.InGroupsOf(Options.MaxProcessingInstructionCount))
                 {
@@ -142,7 +144,7 @@ namespace Umbraco.Web
             if (batch == null)
             {
                 //only write the json blob with a maximum count of the MaxProcessingInstructionCount
-                using (var scope = ScopeProvider.CreateScope())
+                using (var scope = _customScopeProvider.CreateScope())
                 {
                     foreach (var maxBatch in instructions.InGroupsOf(Options.MaxProcessingInstructionCount))
                     {

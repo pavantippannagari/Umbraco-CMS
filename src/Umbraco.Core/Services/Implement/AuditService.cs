@@ -18,7 +18,7 @@ namespace Umbraco.Core.Services.Implement
         private readonly IAuditRepository _auditRepository;
         private readonly IAuditEntryRepository _auditEntryRepository;
 
-        public AuditService(IScopeProvider provider, ILogger logger, IEventMessagesFactory eventMessagesFactory,
+        public AuditService(ICustomScopeProvider provider, ILogger logger, IEventMessagesFactory eventMessagesFactory,
             IAuditRepository auditRepository, IAuditEntryRepository auditEntryRepository)
             : base(provider, logger, eventMessagesFactory)
         {

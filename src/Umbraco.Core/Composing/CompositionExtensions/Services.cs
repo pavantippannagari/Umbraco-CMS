@@ -6,6 +6,7 @@ using Umbraco.Core.Events;
 using Umbraco.Core.IO;
 using Umbraco.Core.Logging;
 using Umbraco.Core.Packaging;
+using Umbraco.Core.Scoping;
 using Umbraco.Core.Services;
 using Umbraco.Core.Services.Implement;
 
@@ -34,6 +35,7 @@ namespace Umbraco.Core.Composing.CompositionExtensions
             composition.RegisterUnique<IContentService, ContentService>();
             composition.RegisterUnique<IUserService, UserService>();
             composition.RegisterUnique<IMemberService, MemberService>();
+            composition.RegisterUnique<ICustomMemberService, CustomMemberService>();
             composition.RegisterUnique<IMediaService, MediaService>();
             composition.RegisterUnique<IContentTypeService, ContentTypeService>();
             composition.RegisterUnique<IContentTypeBaseServiceProvider, ContentTypeBaseServiceProvider>();
