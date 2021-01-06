@@ -53,7 +53,8 @@ namespace Umbraco.Core.Runtime
             composition.RegisterUnique<IScopeAccessor>(f => f.GetInstance<ScopeProvider>());
             composition.RegisterUnique<ICustomScopeProvider>(f =>
                 new CustomScopeProvider(
-                    new UmbracoDatabaseFactory(f.GetInstance<ILogger>(),
+                    new UmbracoDatabaseFactory(Constants.System.UmbracoCustomWriteConnectionName,
+                        f.GetInstance<ILogger>(),
                         new Lazy<IMapperCollection>(() => f.GetInstance<IMapperCollection>())),
                     f.GetInstance<FileSystems>(), f.GetInstance<ILogger>()));
 

@@ -89,7 +89,7 @@ namespace Umbraco.Tests.TestHelpers
         /// <remarks>Should be used sparingly for integration tests only - for unit tests
         /// just mock the services to be passed to the ctor of the ServiceContext.</remarks>
         public ServiceContext GetServiceContext(
-            IScopeProvider scopeProvider, IScopeAccessor scopeAccessor,
+            IScopeProvider scopeProvider, IScopeAccessor scopeAccessor, ICustomScopeProvider customScopeProvider,
             AppCaches cache,
             ILogger logger,
             IGlobalSettings globalSettings,
@@ -113,7 +113,7 @@ namespace Umbraco.Tests.TestHelpers
             var externalLoginService = GetLazyService<IExternalLoginService>(factory, c => new ExternalLoginService(scopeProvider, logger, eventMessagesFactory, GetRepo<IExternalLoginRepository>(c)));
             var publicAccessService = GetLazyService<IPublicAccessService>(factory, c => new PublicAccessService(scopeProvider, logger, eventMessagesFactory, GetRepo<IPublicAccessRepository>(c)));
             var domainService = GetLazyService<IDomainService>(factory, c => new DomainService(scopeProvider, logger, eventMessagesFactory, GetRepo<IDomainRepository>(c)));
-            var auditService = GetLazyService<IAuditService>(factory, c => new AuditService(scopeProvider, logger, eventMessagesFactory, GetRepo<IAuditRepository>(c), GetRepo<IAuditEntryRepository>(c)));
+            var auditService = GetLazyService<IAuditService>(factory, c => new AuditService(customScopeProvider, logger, eventMessagesFactory, GetRepo<IAuditRepository>(c), GetRepo<IAuditEntryRepository>(c)));
 
             var localizedTextService = GetLazyService<ILocalizedTextService>(factory, c => new LocalizedTextService(
                     new Lazy<LocalizedTextServiceFileSources>(() =>
@@ -158,6 +158,7 @@ namespace Umbraco.Tests.TestHelpers
             var serverRegistrationService = GetLazyService<IServerRegistrationService>(factory, c => new ServerRegistrationService(scopeProvider, logger, eventMessagesFactory, GetRepo<IServerRegistrationRepository>(c)));
             var memberGroupService = GetLazyService<IMemberGroupService>(factory, c => new MemberGroupService(scopeProvider, logger, eventMessagesFactory, GetRepo<IMemberGroupRepository>(c)));
             var memberService = GetLazyService<IMemberService>(factory, c => new MemberService(scopeProvider, logger, eventMessagesFactory, memberGroupService.Value, mediaFileSystem, GetRepo<IMemberRepository>(c), GetRepo<IMemberTypeRepository>(c), GetRepo<IMemberGroupRepository>(c), GetRepo<IAuditRepository>(c)));
+            var customMemberService = GetLazyService<ICustomMemberService>(factory, c => new CustomMemberService(scopeProvider, logger, eventMessagesFactory, memberGroupService.Value, mediaFileSystem, GetRepo<IMemberRepository>(c), GetRepo<IMemberTypeRepository>(c), GetRepo<IMemberGroupRepository>(c), GetRepo<IAuditRepository>(c)));
             var mediaService = GetLazyService<IMediaService>(factory, c => new MediaService(scopeProvider, mediaFileSystem, logger, eventMessagesFactory, GetRepo<IMediaRepository>(c), GetRepo<IAuditRepository>(c), GetRepo<IMediaTypeRepository>(c), GetRepo<IEntityRepository>(c)));
             var contentTypeService = GetLazyService<IContentTypeService>(factory, c => new ContentTypeService(scopeProvider, logger, eventMessagesFactory, contentService.Value, GetRepo<IContentTypeRepository>(c), GetRepo<IAuditRepository>(c), GetRepo<IDocumentTypeContainerRepository>(c), GetRepo<IEntityRepository>(c)));
             var mediaTypeService = GetLazyService<IMediaTypeService>(factory, c => new MediaTypeService(scopeProvider, logger, eventMessagesFactory, mediaService.Value, GetRepo<IMediaTypeRepository>(c), GetRepo<IAuditRepository>(c), GetRepo<IMediaTypeContainerRepository>(c), GetRepo<IEntityRepository>(c)));
@@ -183,7 +184,7 @@ namespace Umbraco.Tests.TestHelpers
                         compiledPackageXmlParser, Mock.Of<IPackageActionRunner>(),
                         new DirectoryInfo(IOHelper.GetRootDirectorySafe())));
             });
-            var relationService = GetLazyService<IRelationService>(factory, c => new RelationService(scopeProvider, logger, eventMessagesFactory, entityService.Value, GetRepo<IRelationRepository>(c), GetRepo<IRelationTypeRepository>(c), GetRepo<IAuditRepository>(c)));
+            var relationService = GetLazyService<IRelationService>(factory, c => new RelationService(customScopeProvider, logger, eventMessagesFactory, entityService.Value, GetRepo<IRelationRepository>(c), GetRepo<IRelationTypeRepository>(c), GetRepo<IAuditRepository>(c)));
             var tagService = GetLazyService<ITagService>(factory, c => new TagService(scopeProvider, logger, eventMessagesFactory, GetRepo<ITagRepository>(c)));
             var redirectUrlService = GetLazyService<IRedirectUrlService>(factory, c => new RedirectUrlService(scopeProvider, logger, eventMessagesFactory, GetRepo<IRedirectUrlRepository>(c)));
             var consentService = GetLazyService<IConsentService>(factory, c => new ConsentService(scopeProvider, logger, eventMessagesFactory, GetRepo<IConsentRepository>(c)));
@@ -215,7 +216,8 @@ namespace Umbraco.Tests.TestHelpers
                 externalLoginService,
                 redirectUrlService,
                 consentService,
-                contentTypeServiceBaseFactory);
+                contentTypeServiceBaseFactory,
+                customMemberService);
         }
 
         private Lazy<T> GetLazyService<T>(IFactory container, Func<IFactory, T> ctor)
