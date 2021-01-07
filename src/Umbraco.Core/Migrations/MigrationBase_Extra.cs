@@ -83,7 +83,7 @@ namespace Umbraco.Core.Migrations
                 Execute.Sql(sql).Do();
         }
 
-        protected void ReplaceColumn<T>(string tableName, string currentName, string newName)
+        protected virtual void ReplaceColumn<T>(string tableName, string currentName, string newName)
         {
             if (DatabaseType.IsSqlCe())
             {
