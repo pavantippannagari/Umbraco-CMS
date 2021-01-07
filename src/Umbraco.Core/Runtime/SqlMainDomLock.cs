@@ -36,7 +36,7 @@ namespace Umbraco.Core.Runtime
             _logger = logger;
             
             _dbFactory = new UmbracoDatabaseFactory(
-               Constants.System.UmbracoConnectionName,
+               Constants.System.UmbracoCustomWriteConnectionName,
                _logger,
                new Lazy<IMapperCollection>(() => new Persistence.Mappers.MapperCollection(Enumerable.Empty<BaseMapper>())));
         }
